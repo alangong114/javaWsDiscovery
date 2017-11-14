@@ -89,10 +89,10 @@ public class DeviceDiscovery {
                         final List<InterfaceAddress> interfaceAddresses = anInterface.getInterfaceAddresses();
                         for (InterfaceAddress address : interfaceAddresses) {
                             InetAddress inetAddress = address.getAddress();
-                     if(inetAddress instanceof Inet4Address) {
+//                     if(inetAddress instanceof Inet4Address) {
                             addressList.add(address.getAddress());
 //                        System.out.println(address.getAddress());
-                     }
+//                     }
                         }
                     }
                 }
@@ -102,23 +102,17 @@ public class DeviceDiscovery {
         }
         ExecutorService executorService = Executors.newCachedThreadPool();
         for (final InetAddress address : addressList) {
-            final int port = random.nextInt(20000) + 40000;
-            final InetSocketAddress inetSocketAddress=new InetSocketAddress(address,port);
             Runnable runnable = new Runnable() {
                 public void run() {
                     try {
-                        final MulticastSocket server = new MulticastSocket(inetSocketAddress);
                         final String uuid = UUID.randomUUID().toString();
                         final String probe = WS_DISCOVERY_PROBE_MESSAGE.replaceAll("<wsa:MessageID>urn:uuid:.*</wsa:MessageID>", "<wsa:MessageID>urn:uuid:" + uuid + "</wsa:MessageID>");
-//                        udpClient.joinGroup(InetAddress.getByName(WS_DISCOVERY_ADDRESS_IPv4));
-//                        final DatagramSocket server = new DatagramSocket(port, address);
-//                        server.setSoTimeout(WS_DISCOVERY_TIMEOUT);
-                     //   @SuppressWarnings("SocketOpenedButNotSafelyClosed")
+                        final int port = random.nextInt(20000) + 40000;
+                        @SuppressWarnings("SocketOpenedButNotSafelyClosed")
+                        final DatagramSocket server = new DatagramSocket(port, address);
                         new Thread() {
                             public void run() {
-//                                DatagramSocket server=null;
                                 try {
-//                                    server = new DatagramSocket();
                                     final DatagramPacket packet = new DatagramPacket(new byte[4096], 4096);
                                     server.setSoTimeout(WS_DISCOVERY_TIMEOUT);
                                     long timerStarted = System.currentTimeMillis();
@@ -135,7 +129,7 @@ public class DeviceDiscovery {
                                     e.printStackTrace();
                                 } finally {
                                     serverFinished.countDown();
-                                    if (server!=null)server.close();
+                                    server.close();
                                 }
                             }
                         }.start();
@@ -145,13 +139,12 @@ public class DeviceDiscovery {
                             e.printStackTrace();
                         }
                         if (address instanceof Inet4Address) {
-                            System.out.println(address);
                             server.send(new DatagramPacket(probe.getBytes(), probe.length(), InetAddress.getByName(WS_DISCOVERY_ADDRESS_IPv4), WS_DISCOVERY_PORT));
                         } else {
                             server.send(new DatagramPacket(probe.getBytes(), probe.length(), InetAddress.getByName(WS_DISCOVERY_ADDRESS_IPv6), WS_DISCOVERY_PORT));
                         }
                     } catch (Exception e) {
-                        //log
+                        e.printStackTrace();
                     }
                     try {
                         serverFinished.await((WS_DISCOVERY_TIMEOUT), TimeUnit.MILLISECONDS);
